@@ -50,6 +50,93 @@ class Display:
         p = max(0,min(1.15,1-z))**1.65
         return (int(400+(lane-1)*(35+185*p)),int(175+480*p)), p
 
+    def draw_coin(self, surface, x, y, size):
+        radius=max(5,size//4)
+        center=(x,y-max(4,radius))
+        pygame.draw.ellipse(surface,(16,22,30),(x-radius,y-2,radius*2,6))
+        pygame.draw.ellipse(surface,(150,92,24),(center[0]-radius,center[1]-radius+2,
+                               radius*2,radius*2))
+        pygame.draw.circle(surface,(255,185,35),center,radius)
+        pygame.draw.circle(surface,(255,224,91),center,max(2,radius-2),max(1,radius//5))
+        pygame.draw.arc(surface,(255,248,190),(center[0]-radius//2,center[1]-radius//2,
+                                               radius,radius),.8,4.8,max(1,radius//6))
+        pygame.draw.circle(surface,(255,250,204),(center[0]-radius//3,center[1]-radius//3),
+                           max(1,radius//6))
+
+    def draw_beam(self, surface, x, ground_y, width, p):
+        height=max(20,int(105*p))
+        beam_height=max(9,int(18*(.45+p)))
+        left=x-width//2
+        post_width=max(5,width//9)
+        pygame.draw.ellipse(surface,(18,23,31),(left-post_width,ground_y-4,width+post_width*2,8))
+        pygame.draw.rect(surface,(123,54,107),(left,ground_y-height,post_width,height))
+        pygame.draw.rect(surface,(255,164,218),(left+post_width//3,ground_y-height,2,height))
+        pygame.draw.rect(surface,(123,54,107),(left+width-post_width,ground_y-height,post_width,height))
+        pygame.draw.rect(surface,(255,164,218),(left+width-post_width+post_width//3,
+                                                  ground_y-height,2,height))
+        pygame.draw.polygon(surface,(154,69,132),[(left,ground_y-height),
+                           (left+width,ground_y-height),(left+width+max(2,width//14),
+                           ground_y-height-beam_height//2),(left+max(2,width//14),
+                           ground_y-height-beam_height//2)])
+        pygame.draw.rect(surface,(211,101,174),(left,ground_y-height-beam_height,width,beam_height))
+        pygame.draw.line(surface,(255,190,226),(left+3,ground_y-height-beam_height+2),
+                         (left+width-3,ground_y-height-beam_height+2),max(1,int(p*2)))
+        for post_x in (left,left+width-post_width):
+            pygame.draw.rect(surface,(255,193,55),(post_x,ground_y-height+height//3,
+                                                    post_width,max(2,int(3*p))))
+            pygame.draw.rect(surface,(82,43,78),(post_x-2,ground_y-3,post_width+4,4))
+
+    def draw_barrier(self, surface, x, ground_y, width, p):
+        height=max(18,int(55*(.25+p)))
+        depth=max(3,int(width*.12))
+        left=x-width//2
+        top=ground_y-height
+        pygame.draw.ellipse(surface,(16,22,30),(left-depth,ground_y-4,width+depth*2,9))
+        pygame.draw.polygon(surface,(151,66,37),[(left+width,top+3),(left+width+depth,top),
+                           (left+width+depth,ground_y-depth),(left+width,ground_y)])
+        pygame.draw.polygon(surface,(255,185,97),[(left,top+3),(left+depth,top),
+                           (left+width+depth,top),(left+width,top+3)])
+        front=pygame.Rect(left,top+3,width,height-3)
+        pygame.draw.rect(surface,(224,94,45),front,border_radius=max(2,int(p*4)))
+        stripe_h=max(2,int(6*p))
+        for fraction in (.2,.5,.8):
+            band_y=top+int(height*fraction)
+            pygame.draw.rect(surface,(255,207,132),(left+2,band_y,width-4,stripe_h))
+        pygame.draw.line(surface,(255,224,174),(left+3,top+5),(left+3,ground_y-3),max(1,int(p*2)))
+        pygame.draw.line(surface,(125,52,36),(left+width-3,top+5),(left+width-3,ground_y-3),1)
+
+    def draw_train(self, surface, x, ground_y, width, p):
+        height=max(36,int(145*(.25+p)))
+        depth=max(4,int(width*.13))
+        left=x-width//2
+        top=ground_y-height
+        front=pygame.Rect(left,top,width,height)
+        pygame.draw.ellipse(surface,(15,22,31),(left-depth,ground_y-4,width+depth*2,10))
+        pygame.draw.polygon(surface,(28,61,94),[(left+width,top+5),(left+width+depth,top),
+                           (left+width+depth,ground_y-depth),(left+width,ground_y)])
+        pygame.draw.polygon(surface,(120,169,207),[(left+2,top+4),(left+depth,top),
+                           (left+width+depth,top),(left+width,top+4)])
+        pygame.draw.rect(surface,(47,112,169),front,border_radius=max(2,int(p*5)))
+        pygame.draw.line(surface,(161,208,236),(left+3,top+6),(left+3,ground_y-5),max(1,int(p*2)))
+        pygame.draw.line(surface,(25,60,94),(left+width-3,top+5),(left+width-3,ground_y-5),2)
+        if width > 27 and height > 55:
+            glass=pygame.Rect(left+max(4,width//7),top+max(8,height//9),
+                              max(4,width*5//7),max(8,height//3))
+            pygame.draw.rect(surface,(14,39,63),glass,border_radius=3)
+            pygame.draw.rect(surface,(100,177,217),glass,2,border_radius=3)
+            pygame.draw.line(surface,(158,215,240),(glass.left+3,glass.top+3),
+                             (glass.right-4,glass.top+3),max(1,int(p*2)))
+            pygame.draw.line(surface,(24,66,98),(x,glass.top),(x,glass.bottom),max(1,int(p*2)))
+            grille_y=top+height*2//3
+            pygame.draw.line(surface,(22,67,101),(left+width//7,grille_y),
+                             (left+width*6//7,grille_y),max(2,int(p*3)))
+            for light_x in (left+width//5,left+width*4//5):
+                light_y=ground_y-max(8,int(height*.13))
+                pygame.draw.circle(surface,(255,190,86),(light_x,light_y),max(2,int(3*p)))
+                pygame.draw.circle(surface,(255,239,174),(light_x,light_y),max(1,int(p)))
+            pygame.draw.line(surface,(177,205,221),(left+width//6,ground_y-4),
+                             (left+width*5//6,ground_y-4),max(1,int(p*3)))
+
     def draw(self, game, frame, message, calibrated, progress, gesture, paused,
              baseline=None, lateral=DEFAULT_LATERAL):
         s=self.screen
@@ -73,19 +160,13 @@ class Display:
             (x,y),p=self.point(obj.lane,obj.z)
             width=int(16+65*p)
             if obj.kind=='coin':
-                pygame.draw.circle(s,(255,214,67),(x,y-20),max(5,width//4))
+                self.draw_coin(s,x,y,width)
             elif obj.kind=='beam':
-                height=int(20+105*p)
-                pygame.draw.rect(s,(233,123,200),(x-width//2,y-height,width,18))
-                for xx in [x-width//2,x+width//2-6]:
-                    pygame.draw.rect(s,(149,73,136),(xx,y-height,6,height))
+                self.draw_beam(s,x,y,width,p)
+            elif obj.kind=='train':
+                self.draw_train(s,x,y,width,p)
             else:
-                height=int((145 if obj.kind=='train' else 55)*(.25+p))
-                rect=pygame.Rect(x-width//2,y-height,width,height)
-                pygame.draw.rect(s,(79,132,210) if obj.kind=='train' else (246,131,72),rect,border_radius=5)
-                pygame.draw.rect(s,WHITE,rect,2,border_radius=5)
-                if obj.kind=='train':
-                    pygame.draw.rect(s,(20,47,75),(rect.x+8,rect.y+12,max(1,width-16),height//3))
+                self.draw_barrier(s,x,y,width,p)
         (x,y),_=self.point(game.lane,.12)
         lift=math.sin(math.pi*(1-game.jump_left/.95))*100 if game.jump_left>0 else 0
         pygame.draw.ellipse(s,(16,24,35),(x-30,y-7,60,15))
