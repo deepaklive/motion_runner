@@ -7,12 +7,13 @@ DEFAULT_LATERAL = .15
 
 @dataclass
 class Body:
-    leg_x: float
+    waist_x: float
     hip_y: float
     shoulder_y: float
-    ankle_y: float
+    knee_y: float
     torso: float
     hands_up: bool = False
+    knees_visible: bool = True
 
 @dataclass
 class Command:
@@ -50,7 +51,7 @@ class Gestures:
             self.hand_since = None
         self.last_seen = now
         if self.baseline is None:
-            if body.hands_up or body.torso < .08:
+            if body.hands_up or body.torso < .08 or not body.knees_visible:
                 self.samples.clear()
                 self.progress = 0.0
                 return c
@@ -60,14 +61,14 @@ class Gestures:
             span = now - self.samples[0][0]
             self.progress = min(1, span / 2)
             hips = [b.hip_y for _, b in self.samples]
-            xs = [b.leg_x for _, b in self.samples]
+            xs = [b.waist_x for _, b in self.samples]
             if max(hips)-min(hips) > .035 or max(xs)-min(xs) > .04:
                 self.samples.clear()
                 self.progress = 0.0
             elif span >= 2 and len(self.samples) >= 15:
                 bs = [b for _, b in self.samples]
                 self.baseline = Body(*(median(getattr(b, key) for b in bs)
-                                      for key in ['leg_x','hip_y','shoulder_y','ankle_y','torso']))
+                                      for key in ['waist_x','hip_y','shoulder_y','knee_y','torso']))
             return c
         if body.hands_up:
             if self.hand_since is None:
@@ -82,23 +83,27 @@ class Gestures:
             self.filtered = body
         else:
             self.filtered = Body(*(getattr(self.filtered,k)*.45 + getattr(body,k)*.55
-                                   for k in ['leg_x','hip_y','shoulder_y','ankle_y','torso']))
+                                   for k in ['waist_x','hip_y','shoulder_y','knee_y','torso']),
+                                  body.hands_up, body.knees_visible)
         b, base = self.filtered, self.baseline
         scale = max(.08, base.torso)
-        dx = (b.leg_x-base.leg_x)/scale
-        if abs(dx) < self.lateral*.45:
-            self.side_armed = True
-        if self.side_armed and abs(dx) > self.lateral:
-            c.move = -1 if dx < 0 else 1
-            self.side_armed = False
+        dx = (b.waist_x-base.waist_x)/scale
+        if b.knees_visible:
+            if abs(dx) < self.lateral*.45:
+                self.side_armed = True
+            if self.side_armed and abs(dx) > self.lateral:
+                c.move = -1 if dx < 0 else 1
+                self.side_armed = False
         rise = (base.hip_y-b.hip_y)/scale
-        foot_rise = (base.ankle_y-b.ankle_y)/scale
-        c.duck = ((b.shoulder_y-base.shoulder_y)/scale > self.duck_threshold
-                  or b.torso/base.torso < .68) and rise < .1
-        # Feet AND hips must rise; standing upright after a squat is not a jump.
-        if rise < self.jump_threshold*.4 and foot_rise < self.jump_threshold*.4:
+        knee_rise = (base.knee_y-b.knee_y)/scale
+        c.duck = (not b.knees_visible or (
+            ((b.shoulder_y-base.shoulder_y)/scale > self.duck_threshold
+             or b.torso/base.torso < .68) and rise < .1))
+        # Knees AND hips must rise; standing upright after a squat is not a jump.
+        if b.knees_visible and rise < self.jump_threshold*.4 and knee_rise < self.jump_threshold*.4:
             self.jump_armed = True
-        if self.jump_armed and rise > self.jump_threshold and foot_rise > self.jump_threshold*.65 and not c.duck:
+        if (b.knees_visible and self.jump_armed and rise > self.jump_threshold
+            and knee_rise > self.jump_threshold*.65 and not c.duck):
             c.jump = True
             self.jump_armed = False
         return c

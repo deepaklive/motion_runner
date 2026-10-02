@@ -20,6 +20,13 @@ class GestureTests(unittest.TestCase):
         g.update(None,3)
         self.assertEqual(g.progress,0)
 
+    def test_calibration_requires_visible_knees(self):
+        g=Gestures()
+        for i in range(65):
+            body=Body(.5,.55,.3,.9,.25,knees_visible=False)
+            g.update(body,i/30)
+        self.assertIsNone(g.baseline)
+
     def test_lateral_edge_and_rearm(self):
         g=self.ready()
         left=Body(.25,.55,.3,.9,.25)
@@ -32,8 +39,8 @@ class GestureTests(unittest.TestCase):
 
     def test_small_steps_change_lanes_both_directions(self):
         g=self.ready()
-        left=Body(leg_x=.46,hip_y=.55,shoulder_y=.3,ankle_y=.9,torso=.25)
-        right=Body(leg_x=.54,hip_y=.55,shoulder_y=.3,ankle_y=.9,torso=.25)
+        left=Body(waist_x=.46,hip_y=.55,shoulder_y=.3,knee_y=.9,torso=.25)
+        right=Body(waist_x=.54,hip_y=.55,shoulder_y=.3,knee_y=.9,torso=.25)
         self.assertIn(-1,[g.update(left,3+i/30).move for i in range(8)])
         for i in range(12):
             g.update(BASE,3.3+i*.04)
@@ -57,6 +64,14 @@ class GestureTests(unittest.TestCase):
         self.assertFalse(c.jump)
         for i in range(10):
             self.assertFalse(g.update(BASE,3.1+i*.04).jump)
+
+    def test_missing_knees_counts_as_duck(self):
+        g=self.ready()
+        body=Body(.8,.43,.18,.78,.25,knees_visible=False)
+        command=g.update(body,3)
+        self.assertTrue(command.duck)
+        self.assertFalse(command.jump)
+        self.assertEqual(command.move,0)
 
     def test_raised_hands_hold_and_release(self):
         g=self.ready()

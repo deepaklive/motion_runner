@@ -6,7 +6,7 @@ An original Python endless runner inspired by the three-lane genre. Play with yo
 
 - Python 3.11 or 3.12, preferably 64-bit. A webcam and desktop display.
 - Windows or Linux. Start with a 640 x 480 camera image and good room lighting.
-- Stand far enough away that shoulders, hips, and feet remain in view, including when you jump. Keep the camera stationary and leave clear space around you.
+- Keep your shoulders, hips, and knees in view, including when you jump. Feet and head do not need to remain visible. Keep the camera stationary and leave clear space around you.
 - CPU inference is used; a dedicated GPU is not required. Actual speed and detection accuracy depend on your computer and lighting.
 
 ## Setup (Windows PowerShell)
@@ -33,7 +33,7 @@ Internet is needed once for packages and the approximately 6 MB Google pose mode
 
 ## How to play
 
-1. Stand upright in the center with hands down. Hold still for two seconds to calibrate. Your feet must be visible.
+1. Stand upright in the center with hands down. Hold still for two seconds to calibrate. Keep your shoulders, hips, and knees visible.
 2. Raise both hands above your shoulders for 1.2 seconds to start, then lower them. A short countdown gives you time to get ready.
 3. Use these body movements:
 
@@ -41,12 +41,12 @@ Internet is needed once for packages and the approximately 6 MB Google pose mode
 | --- | --- |
 | Jump upward | Jump over orange barriers |
 | Bend down or squat | Duck beneath pink overhead beams |
-| Shift feet left | Move one lane left |
-| Shift feet right | Move one lane right |
+| Shift waist/hips left | Move one lane left |
+| Shift waist/hips right | Move one lane right |
 | Jump diagonally | Jump and change lane together |
 | Raise both hands for 1.2 seconds | Pause, resume, or restart after game over |
 
-The camera preview is mirrored: shifting your feet left moves the runner left. Lane changes follow the midpoint between your ankles relative to its calibrated starting position, so you do not need to lean your torso. Return your feet to the starting position between repeated sideways movements to rearm the lane gesture. This is relative movement control, not absolute screen-position lane selection. Holding a crouch keeps the runner ducking; each detected takeoff creates a 0.95-second game jump. Jump detection checks that both hips and feet rise, rather than treating recovery from a squat as a jump.
+The camera preview is mirrored and shows your calibrated waist center and the left/right lane-change thresholds. Shift your waist/hips across either threshold to change lanes; lane tracking uses the midpoint between the hips rather than the upper body. Return your waist to the center between repeated sideways movements to rearm the gesture. This is relative movement control, not absolute screen-position lane selection. Holding a crouch keeps the runner ducking; each detected takeoff creates a 0.95-second game jump. Jump detection checks that both hips and knees rise, rather than treating recovery from a squat as a jump. Gameplay tracking uses the body from shoulders through knees; head and below-knee landmarks are not required.
 
 Avoid blue trains by changing lane. Gold coins add 25 points. Speed increases gradually. Losing body tracking freezes the simulation; restoring tracking adds a one-second grace period. Calibration is kept across restarts; close and reopen the game to recalibrate after moving the camera.
 
@@ -55,7 +55,13 @@ Click **Full screen** in the game to fill your display; click **Windowed** to re
 ## Tune the controls
 
 ```bash
+python main.py --list-cameras
 python main.py --camera 1
+```
+
+The list command prints available camera indices; pass the desired index with `--camera` when starting the game. The default is camera `0`.
+
+```bash
 python main.py --lateral 0.12 --jump 0.18 --duck 0.3
 ```
 
@@ -64,8 +70,8 @@ Thresholds are fractions of your calibrated torso height. Smaller values make de
 ## Troubleshooting
 
 - **Camera cannot open:** close video calls and other camera applications; allow desktop camera access in your OS settings; try `--camera 1`.
-- **Calibration never completes:** ensure ankles, hips, and shoulders are visible; improve lighting; stay upright with hands down and stop moving for two seconds.
-- **Missed jumps:** move farther from the camera so feet stay visible; lower `--jump` a little. The webcam estimates motion; it does not measure physical height precisely.
+- **Calibration never completes:** ensure knees, hips, and shoulders are visible; improve lighting; stay upright with hands down and stop moving for two seconds.
+- **Missed jumps:** keep knees visible; lower `--jump` a little. The webcam estimates motion; it does not measure physical height precisely.
 - **Duck not detected:** bend your upper body down further or lower `--duck`.
 - **Repeated sideways hops do nothing:** return to the calibrated center before the next hop.
 - **Slow video:** close background applications; use a well-lit scene. Inference and drawing are synchronous, targeting at most 30 FPS.

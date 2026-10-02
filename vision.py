@@ -7,7 +7,16 @@ from mediapipe.tasks.python import vision
 from controls import Body
 
 EDGES = [(11,12),(11,23),(12,24),(23,24),(11,13),(13,15),
-         (12,14),(14,16),(23,25),(25,27),(24,26),(26,28)]
+         (12,14),(14,16),(23,25),(24,26)]
+
+def available_cameras(max_index=9):
+    available = []
+    for index in range(max_index + 1):
+        capture = cv2.VideoCapture(index)
+        if capture.isOpened():
+            available.append(index)
+        capture.release()
+    return available
 
 class Camera:
     def __init__(self, index, model):
@@ -40,13 +49,16 @@ class Camera:
         body = None
         if result.pose_landmarks:
             lm = result.pose_landmarks[0]
-            needed = [11,12,23,24,27,28]
-            if all(lm[i].visibility > .55 and 0 < lm[i].x < 1 and 0 < lm[i].y < 1 for i in needed):
+            torso = [11,12,23,24]
+            if all(lm[i].visibility > .55 and 0 < lm[i].x < 1 and 0 < lm[i].y < 1 for i in torso):
                 sy = (lm[11].y+lm[12].y)/2
                 hy = (lm[23].y+lm[24].y)/2
+                hx = (lm[23].x+lm[24].x)/2
+                knees_visible = all(lm[i].visibility > .55 and 0 < lm[i].x < 1 and 0 < lm[i].y < 1
+                                    for i in [25,26])
                 up = all(lm[i].visibility > .55 for i in [15,16]) and lm[15].y < sy-.08 and lm[16].y < sy-.08
-                body = Body((lm[27].x+lm[28].x)/2, hy, sy,
-                            (lm[27].y+lm[28].y)/2, max(.01,hy-sy), up)
+                knee_y = (lm[25].y+lm[26].y)/2 if knees_visible else hy
+                body = Body(hx, hy, sy, knee_y, max(.01,hy-sy), up, knees_visible)
             h,w = frame.shape[:2]
             for a,b in EDGES:
                 if lm[a].visibility > .55 and lm[b].visibility > .55:

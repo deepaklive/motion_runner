@@ -27,6 +27,7 @@ class Display:
         self.exit_button = pygame.Rect(1005,645,75,30)
         pygame.display.set_caption('Motion Runner | Webcam controlled')
         self.font = pygame.font.Font(None,27)
+        self.small = pygame.font.Font(None,20)
         self.big = pygame.font.Font(None,54)
 
     def handle_click(self, pos):
@@ -49,7 +50,8 @@ class Display:
         p = max(0,min(1.15,1-z))**1.65
         return (int(400+(lane-1)*(35+185*p)),int(175+480*p)), p
 
-    def draw(self, game, frame, message, calibrated, progress, gesture, paused):
+    def draw(self, game, frame, message, calibrated, progress, gesture, paused,
+             baseline=None, lateral=DEFAULT_LATERAL):
         s=self.screen
         s.fill(BG)
         pygame.draw.circle(s,(30,55,84),(410,180),100)
@@ -100,10 +102,30 @@ class Display:
         if frame is not None:
             surface=pygame.image.frombuffer(frame.tobytes(),(frame.shape[1],frame.shape[0]),'RGB')
             s.blit(pygame.transform.smoothscale(surface,(260,195)),(825,60))
+            if baseline is not None:
+                preview=pygame.Rect(825,60,260,195)
+                center_x=preview.left+round(baseline.waist_x*preview.width)
+                threshold=round(lateral*max(.08,baseline.torso)*preview.width)
+                left_x=max(preview.left,min(preview.right,center_x-threshold))
+                right_x=max(preview.left,min(preview.right,center_x+threshold))
+                band=pygame.Surface((max(1,right_x-left_x),preview.height),pygame.SRCALPHA)
+                band.fill((55,219,229,28))
+                s.blit(band,(left_x,preview.top))
+                pygame.draw.line(s,(255,190,83),(left_x,preview.top),(left_x,preview.bottom),2)
+                pygame.draw.line(s,(255,190,83),(right_x,preview.top),(right_x,preview.bottom),2)
+                pygame.draw.line(s,CYAN,(center_x,preview.top),(center_x,preview.bottom),2)
+                waist_y=preview.top+round(baseline.hip_y*preview.height)
+                pygame.draw.line(s,WHITE,(left_x,waist_y),(right_x,waist_y),1)
+                pygame.draw.circle(s,CYAN,(center_x,waist_y),4)
+                pygame.draw.rect(s,WHITE,preview,1)
+                pygame.draw.line(s,CYAN,(827,272),(845,272),3)
+                s.blit(self.small.render('Waist center',True,WHITE),(850,263))
+                pygame.draw.line(s,(255,190,83),(960,272),(978,272),3)
+                s.blit(self.small.render('Shift limit',True,WHITE),(983,263))
         else:
             self.text('Camera unavailable',(830,120))
         self.text('BODY CONTROLS',(830,285),CYAN)
-        for i,line in enumerate(['Jump: clear orange barriers','Bend: pass under pink beams','Shift feet left/right: lane','Blue trains: change lane','Gold coins: collect for points','','Return feet to center between','left/right movements.','','Both hands up for 1.2 sec:','start / restart / pause.']):
+        for i,line in enumerate(['Jump: clear orange barriers','Bend: pass under pink beams','Shift waist left/right: lane','Blue trains: change lane','Gold coins: collect for points','','Return waist to center between','left/right movements.','','Both hands up for 1.2 sec:','start / restart / pause.']):
             self.text(line,(825,325+i*25))
         self.text(f'Action: {gesture}',(825,610),CYAN)
         for rect in [self.full_button,self.exit_button]:
@@ -130,7 +152,8 @@ class Display:
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--camera',type=int,default=0)
+    parser.add_argument('--camera',type=int,default=0,help='Camera index (use --list-cameras to see available indices)')
+    parser.add_argument('--list-cameras',action='store_true',help='List available camera indices and exit')
     parser.add_argument('--fullscreen',action='store_true',help='Start in fullscreen mode')
     parser.add_argument('--display',type=int,default=0,help='Monitor index: 0 for first, 1 for second')
     parser.add_argument('--lateral',type=float,default=DEFAULT_LATERAL,help='Lateral threshold in torso lengths')
@@ -139,6 +162,15 @@ def main():
     args=parser.parse_args()
     if min(args.lateral,args.jump,args.duck)<=0:
         parser.error('Gesture thresholds must be positive')
+    if args.list_cameras:
+        from vision import available_cameras
+        cameras=available_cameras()
+        if cameras:
+            print('Available cameras: '+', '.join(str(index) for index in cameras))
+            print('Select one with: python main.py --camera INDEX')
+        else:
+            print('No cameras detected. Check camera permissions and connections.')
+        return 0
     model=Path(__file__).resolve().parent/'models'/'pose_landmarker_lite.task'
     if not model.is_file():
         print('Model missing. Run: python download_model.py',file=sys.stderr)
@@ -180,9 +212,9 @@ def main():
                     resume_at=now+1.5
             message=''
             if controls.baseline is None:
-                message='Stand still in the center for 2 seconds. Keep your full body visible.'
+                message='Stand still in the center for 2 seconds. Keep shoulders through knees visible.'
             elif not tracked:
-                message='Tracking lost: paused. Step back until your body is visible.'
+                message='Tracking lost: paused. Keep shoulders through knees visible.'
             elif state=='ready':
                 message='Ready! Raise BOTH hands for 1.2 seconds to start.'
             elif state=='over':
@@ -196,7 +228,8 @@ def main():
                 if not game.alive:
                     state='over'
             gesture='LEFT' if cmd.move<0 else 'RIGHT' if cmd.move>0 else 'JUMP' if game.jump_left>0 else 'DUCK' if cmd.duck else 'CENTER'
-            ui.draw(game,frame,message,controls.baseline is not None,controls.progress,gesture,bool(message))
+            ui.draw(game,frame,message,controls.baseline is not None,controls.progress,gesture,bool(message),
+                    controls.baseline,controls.lateral)
             clock.tick(30)
     except (RuntimeError,ValueError,OSError) as exc:
         print(f'Cannot start/run Motion Runner: {exc}',file=sys.stderr)
