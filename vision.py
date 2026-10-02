@@ -45,7 +45,7 @@ class Camera:
                 sy = (lm[11].y+lm[12].y)/2
                 hy = (lm[23].y+lm[24].y)/2
                 up = all(lm[i].visibility > .55 for i in [15,16]) and lm[15].y < sy-.08 and lm[16].y < sy-.08
-                body = Body((lm[23].x+lm[24].x)/2, hy, sy,
+                body = Body((lm[27].x+lm[28].x)/2, hy, sy,
                             (lm[27].y+lm[28].y)/2, max(.01,hy-sy), up)
             h,w = frame.shape[:2]
             for a,b in EDGES:

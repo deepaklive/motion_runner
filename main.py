@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import time
 import pygame
-from controls import Gestures
+from controls import DEFAULT_LATERAL, Gestures
 from engine import Runner
 
 W,H = 1100,720
@@ -14,12 +14,33 @@ WHITE=(231,240,255)
 CYAN=(55,219,229)
 
 class Display:
-    def __init__(self):
+    def __init__(self, fullscreen=False, display=0):
         pygame.init()
-        self.screen = pygame.display.set_mode((W,H))
+        self.fullscreen = fullscreen
+        self.display = display
+        count = pygame.display.get_num_displays()
+        if not 0 <= display < count:
+            raise ValueError(f'Display {display} is unavailable. Detected {count} display(s); choose 0 to {count-1}.')
+        self.window = pygame.display.set_mode((0,0) if fullscreen else (W,H), pygame.FULLSCREEN if fullscreen else 0, display=self.display)
+        self.screen = pygame.Surface((W,H))
+        self.full_button = pygame.Rect(825,645,170,30)
+        self.exit_button = pygame.Rect(1005,645,75,30)
         pygame.display.set_caption('Motion Runner | Webcam controlled')
         self.font = pygame.font.Font(None,27)
         self.big = pygame.font.Font(None,54)
+
+    def handle_click(self, pos):
+        width,height = self.window.get_size()
+        scale = min(width/W,height/H)
+        logical = ((pos[0]-(width-W*scale)/2)/scale,
+                   (pos[1]-(height-H*scale)/2)/scale)
+        if self.exit_button.collidepoint(logical):
+            return True
+        if self.full_button.collidepoint(logical):
+            self.fullscreen = not self.fullscreen
+            self.window = pygame.display.set_mode((0,0) if self.fullscreen else (W,H),
+                                                  pygame.FULLSCREEN if self.fullscreen else 0, display=self.display)
+        return False
 
     def text(self, s, pos, color=WHITE, big=False):
         self.screen.blit((self.big if big else self.font).render(s,True,color),pos)
@@ -82,9 +103,13 @@ class Display:
         else:
             self.text('Camera unavailable',(830,120))
         self.text('BODY CONTROLS',(830,285),CYAN)
-        for i,line in enumerate(['Jump: clear orange barriers','Bend: pass under pink beams','Move left/right: change lane','Blue trains: change lane','Gold coins: collect for points','','Return to center between','each left/right movement.','','Both hands up for 1.2 sec:','start / restart / pause.']):
+        for i,line in enumerate(['Jump: clear orange barriers','Bend: pass under pink beams','Shift feet left/right: lane','Blue trains: change lane','Gold coins: collect for points','','Return feet to center between','left/right movements.','','Both hands up for 1.2 sec:','start / restart / pause.']):
             self.text(line,(825,325+i*25))
-        self.text(f'Action: {gesture}',(825,625),CYAN)
+        self.text(f'Action: {gesture}',(825,610),CYAN)
+        for rect in [self.full_button,self.exit_button]:
+            pygame.draw.rect(s,(40,65,87),rect,border_radius=6)
+        self.text('Windowed' if self.fullscreen else 'Full screen',(835,650))
+        self.text('Exit',(1020,650))
         self.text('All camera processing is local',(825,680))
         if message:
             panel=pygame.Surface((750,110),pygame.SRCALPHA)
@@ -94,13 +119,21 @@ class Display:
             if not calibrated:
                 pygame.draw.rect(s,(40,60,78),(42,305,700,14),border_radius=6)
                 pygame.draw.rect(s,CYAN,(42,305,int(700*progress),14),border_radius=6)
+        width,height = self.window.get_size()
+        scale = min(width/W,height/H)
+        size = (round(W*scale),round(H*scale))
+        self.window.fill(BG)
+        self.window.blit(pygame.transform.smoothscale(s,size),
+                         ((width-size[0])//2,(height-size[1])//2))
         pygame.display.flip()
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--camera',type=int,default=0)
-    parser.add_argument('--lateral',type=float,default=.65,help='Lateral threshold in torso lengths')
+    parser.add_argument('--fullscreen',action='store_true',help='Start in fullscreen mode')
+    parser.add_argument('--display',type=int,default=0,help='Monitor index: 0 for first, 1 for second')
+    parser.add_argument('--lateral',type=float,default=DEFAULT_LATERAL,help='Lateral threshold in torso lengths')
     parser.add_argument('--jump',type=float,default=.22,help='Jump threshold in torso lengths')
     parser.add_argument('--duck',type=float,default=.35,help='Duck threshold in torso lengths')
     args=parser.parse_args()
@@ -114,7 +147,7 @@ def main():
     camera=None
     try:
         camera=Camera(args.camera,model)
-        ui=Display()
+        ui=Display(args.fullscreen,args.display)
         controls=Gestures(args.lateral,args.jump,args.duck)
         game=Runner()
         state='ready'
@@ -124,7 +157,7 @@ def main():
         was_tracked=False
         while True:
             for event in pygame.event.get():
-                if event.type==pygame.QUIT:
+                if event.type==pygame.QUIT or (event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and ui.handle_click(event.pos)):
                     return 0
             body,frame=camera.read()
             now=time.monotonic()

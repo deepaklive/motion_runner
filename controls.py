@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from collections import deque
 from statistics import median
 
+DEFAULT_LATERAL = .15
+
 @dataclass
 class Body:
-    x: float
+    leg_x: float
     hip_y: float
     shoulder_y: float
     ankle_y: float
@@ -20,7 +22,7 @@ class Command:
     activate: bool = False
 
 class Gestures:
-    def __init__(self, lateral=.65, jump=.22, duck=.35):
+    def __init__(self, lateral=DEFAULT_LATERAL, jump=.22, duck=.35):
         self.lateral, self.jump_threshold, self.duck_threshold = lateral, jump, duck
         self.samples = deque()
         self.baseline = None
@@ -58,14 +60,14 @@ class Gestures:
             span = now - self.samples[0][0]
             self.progress = min(1, span / 2)
             hips = [b.hip_y for _, b in self.samples]
-            xs = [b.x for _, b in self.samples]
+            xs = [b.leg_x for _, b in self.samples]
             if max(hips)-min(hips) > .035 or max(xs)-min(xs) > .04:
                 self.samples.clear()
                 self.progress = 0.0
             elif span >= 2 and len(self.samples) >= 15:
                 bs = [b for _, b in self.samples]
                 self.baseline = Body(*(median(getattr(b, key) for b in bs)
-                                      for key in ['x','hip_y','shoulder_y','ankle_y','torso']))
+                                      for key in ['leg_x','hip_y','shoulder_y','ankle_y','torso']))
             return c
         if body.hands_up:
             if self.hand_since is None:
@@ -80,10 +82,10 @@ class Gestures:
             self.filtered = body
         else:
             self.filtered = Body(*(getattr(self.filtered,k)*.45 + getattr(body,k)*.55
-                                   for k in ['x','hip_y','shoulder_y','ankle_y','torso']))
+                                   for k in ['leg_x','hip_y','shoulder_y','ankle_y','torso']))
         b, base = self.filtered, self.baseline
         scale = max(.08, base.torso)
-        dx = (b.x-base.x)/scale
+        dx = (b.leg_x-base.leg_x)/scale
         if abs(dx) < self.lateral*.45:
             self.side_armed = True
         if self.side_armed and abs(dx) > self.lateral:

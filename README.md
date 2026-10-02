@@ -41,25 +41,25 @@ Internet is needed once for packages and the approximately 6 MB Google pose mode
 | --- | --- |
 | Jump upward | Jump over orange barriers |
 | Bend down or squat | Duck beneath pink overhead beams |
-| Hop or step left | Move one lane left |
-| Hop or step right | Move one lane right |
+| Shift feet left | Move one lane left |
+| Shift feet right | Move one lane right |
 | Jump diagonally | Jump and change lane together |
 | Raise both hands for 1.2 seconds | Pause, resume, or restart after game over |
 
-The camera preview is mirrored: movement to your left moves the runner left. Return to your original standing center between repeated sideways movements to rearm the lane gesture. This is relative movement control, not absolute screen-position lane selection. Holding a crouch keeps the runner ducking; each detected takeoff creates a 0.95-second game jump. Jump detection checks that both hips and feet rise, rather than treating recovery from a squat as a jump.
+The camera preview is mirrored: shifting your feet left moves the runner left. Lane changes follow the midpoint between your ankles relative to its calibrated starting position, so you do not need to lean your torso. Return your feet to the starting position between repeated sideways movements to rearm the lane gesture. This is relative movement control, not absolute screen-position lane selection. Holding a crouch keeps the runner ducking; each detected takeoff creates a 0.95-second game jump. Jump detection checks that both hips and feet rise, rather than treating recovery from a squat as a jump.
 
 Avoid blue trains by changing lane. Gold coins add 25 points. Speed increases gradually. Losing body tracking freezes the simulation; restoring tracking adds a one-second grace period. Calibration is kept across restarts; close and reopen the game to recalibrate after moving the camera.
 
-There are no keyboard gameplay bindings. Close the window using its close button to exit. Setup commands and window closing are outside gameplay.
+Click **Full screen** in the game to fill your display; click **Windowed** to return. Alternatively, launch with `python main.py --fullscreen`. For two monitors, use `python main.py --fullscreen --display 1` to select the second display (`--display 0` selects the first). Monitor numbering follows the operating system and may differ from its settings labels. Fullscreen fills the selected monitor; it does not span both. Graphics scale to your screen while preserving proportions. Click **Exit** to close the game in either mode. There are no keyboard gameplay bindings; these mouse buttons only manage the window.
 
 ## Tune the controls
 
 ```bash
 python main.py --camera 1
-python main.py --lateral 0.5 --jump 0.18 --duck 0.3
+python main.py --lateral 0.12 --jump 0.18 --duck 0.3
 ```
 
-Thresholds are fractions of your calibrated torso height. Smaller values make detection more sensitive but can cause accidental actions. Defaults: lateral 0.65, jump 0.22, duck 0.35.
+Thresholds are fractions of your calibrated torso height. Smaller values make detection more sensitive but can cause accidental actions. Defaults: lateral 0.15, jump 0.22, duck 0.35.
 
 ## Troubleshooting
 

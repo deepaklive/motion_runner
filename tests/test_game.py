@@ -30,6 +30,15 @@ class GestureTests(unittest.TestCase):
         moves=[g.update(left,4+i/30).move for i in range(8)]
         self.assertEqual(sum(moves),-1)
 
+    def test_small_steps_change_lanes_both_directions(self):
+        g=self.ready()
+        left=Body(leg_x=.46,hip_y=.55,shoulder_y=.3,ankle_y=.9,torso=.25)
+        right=Body(leg_x=.54,hip_y=.55,shoulder_y=.3,ankle_y=.9,torso=.25)
+        self.assertIn(-1,[g.update(left,3+i/30).move for i in range(8)])
+        for i in range(12):
+            g.update(BASE,3.3+i*.04)
+        self.assertIn(1,[g.update(right,4+i/30).move for i in range(8)])
+
     def test_jump_once_per_takeoff_and_diagonal(self):
         g=self.ready()
         b=Body(.75,.43,.18,.78,.25)
