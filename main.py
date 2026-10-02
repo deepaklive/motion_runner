@@ -137,6 +137,75 @@ class Display:
             pygame.draw.line(surface,(177,205,221),(left+width//6,ground_y-4),
                              (left+width*5//6,ground_y-4),max(1,int(p*3)))
 
+    def draw_track(self, surface, distance):
+        horizon=175
+        center=400
+
+        def road_point(p, lane_edge):
+            y=int(horizon+480*p)
+            half_lane=35+185*p
+            return int(center+lane_edge*half_lane),y
+
+        far_left=road_point(0, -1.5)
+        far_right=road_point(0, 1.5)
+        near_left=road_point(1, -1.5)
+        near_right=road_point(1, 1.5)
+        pygame.draw.polygon(surface,(38,43,49),[far_left,far_right,near_right,near_left])
+
+        phase=(distance/20)%1
+        bands=22
+        for index in range(bands):
+            p0=max(0,((index/bands+phase/bands)%1))
+            p1=min(1,p0+.045)
+            if p1<=p0:
+                continue
+            left0=road_point(p0,-1.5)
+            right0=road_point(p0,1.5)
+            left1=road_point(p1,-1.5)
+            right1=road_point(p1,1.5)
+            shade=42+(index%3)
+            pygame.draw.polygon(surface,(shade,47+(index%2),53+(index%2)),
+                                [left0,right0,right1,left1])
+
+        # Edge shoulders and pale road-edge lines follow the same perspective.
+        for side in (-1,1):
+            inner_far=road_point(0,side*1.46)
+            outer_far=road_point(0,side*1.62)
+            inner_near=road_point(1,side*1.46)
+            outer_near=road_point(1,side*1.62)
+            pygame.draw.polygon(surface,(74,78,78),[inner_far,outer_far,outer_near,inner_near])
+            edge_a=road_point(0,side*1.43)
+            edge_b=road_point(1,side*1.43)
+            pygame.draw.line(surface,(193,196,186),edge_a,edge_b,2)
+            rumble_a=road_point(0,side*1.57)
+            rumble_b=road_point(1,side*1.57)
+            pygame.draw.line(surface,(191,78,57),rumble_a,rumble_b,3)
+
+        # Dashed lane dividers slide toward the player as the track advances.
+        dash_phase=(distance/38)%1
+        for divider in (-.5,.5):
+            for index in range(14):
+                t=(index/14+dash_phase/14)%1
+                t_end=min(1,t+.032)
+                p0=t**1.65
+                p1=t_end**1.65
+                if p1<=p0:
+                    continue
+                points=[road_point(p0,divider-.009*max(.15,p0)),
+                        road_point(p0,divider+.009*max(.15,p0)),
+                        road_point(p1,divider+.009*max(.15,p1)),
+                        road_point(p1,divider-.009*max(.15,p1))]
+                pygame.draw.polygon(surface,(192,194,185),points)
+
+        # Short transverse repair seams add scale without making the surface noisy.
+        seam_phase=(distance/58)%1
+        for index in range(9):
+            t=(index/9+seam_phase/9)%1
+            p=t**1.65
+            left=road_point(p,-1.38)
+            right=road_point(p,1.38)
+            pygame.draw.line(surface,(49,53,58),left,right,max(1,int(1+p*2)))
+
     def draw(self, game, frame, message, calibrated, progress, gesture, paused,
              baseline=None, lateral=DEFAULT_LATERAL):
         s=self.screen
@@ -149,13 +218,7 @@ class Display:
             pygame.draw.rect(s,(24,36,59),(x,175-height,49,height))
             for yy in range(185-height,165,24):
                 pygame.draw.rect(s,(50,89,111),(x+9,yy,8,9))
-        pygame.draw.polygon(s,(37,47,65),[(345,175),(455,175),(770,690),(30,690)])
-        for edge in [-1.5,-.5,.5,1.5]:
-            pygame.draw.line(s,(79,106,126),(int(400+edge*35),175),(int(400+edge*220),690),3)
-        for i in range(13):
-            z=(i/13+game.distance/140)%1
-            (x,y),p=self.point(1,z)
-            pygame.draw.line(s,(55,72,89),(int(x-330*p),y),(int(x+330*p),y),max(1,int(4*p)))
+        self.draw_track(s,game.distance)
         for obj in sorted(game.obstacles,key=lambda o:o.z,reverse=True):
             (x,y),p=self.point(obj.lane,obj.z)
             width=int(16+65*p)
