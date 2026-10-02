@@ -177,12 +177,21 @@ def main():
         return 1
     from vision import Camera
     camera=None
+    music_loaded=False
     try:
         camera=Camera(args.camera,model)
         ui=Display(args.fullscreen,args.display)
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            pygame.mixer.music.load(str(Path(__file__).resolve().parent/'sound'/'theme.mp3'))
+            music_loaded=True
+        except pygame.error as exc:
+            print(f'Audio unavailable; continuing without music: {exc}',file=sys.stderr)
         controls=Gestures(args.lateral,args.jump,args.duck)
         game=Runner()
         state='ready'
+        music_playing=False
         clock=pygame.time.Clock()
         last=time.monotonic()
         resume_at=0.0
@@ -227,6 +236,13 @@ def main():
                 game.update(dt,cmd)
                 if not game.alive:
                     state='over'
+            should_play_music=state=='playing' and now>=resume_at and tracked
+            if music_loaded and should_play_music != music_playing:
+                if should_play_music:
+                    pygame.mixer.music.play(-1)
+                else:
+                    pygame.mixer.music.stop()
+                music_playing=should_play_music
             gesture='LEFT' if cmd.move<0 else 'RIGHT' if cmd.move>0 else 'JUMP' if game.jump_left>0 else 'DUCK' if cmd.duck else 'CENTER'
             ui.draw(game,frame,message,controls.baseline is not None,controls.progress,gesture,bool(message),
                     controls.baseline,controls.lateral)
@@ -235,6 +251,8 @@ def main():
         print(f'Cannot start/run Motion Runner: {exc}',file=sys.stderr)
         return 1
     finally:
+        if music_loaded:
+            pygame.mixer.music.stop()
         if camera is not None:
             camera.close()
         pygame.quit()
